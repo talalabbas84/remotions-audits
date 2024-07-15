@@ -111,6 +111,7 @@ export const Main: React.FC = () => {
   const { fps } = useVideoConfig();
   const holdDuration = 3 * fps; // Duration to hold the image and text visible after transition
   const transitionDuration = 0.3 * fps; // Duration for quick transition
+  const fadeTransitionDuration = 0.9 * fps; // Duration for fade transition
   const initialDuration = 1 * fps; // Duration for the initial transition
 
   return (
@@ -140,6 +141,7 @@ export const Main: React.FC = () => {
               holdDuration={holdDuration}
               transitionDuration={transitionDuration}
               initialDuration={initialDuration}
+              fadeTransitionDuration={fadeTransitionDuration}
             />
           </Sequence>
         );

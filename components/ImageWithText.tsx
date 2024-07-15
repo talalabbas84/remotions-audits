@@ -8,6 +8,13 @@ import {
   useVideoConfig
 } from 'remotion';
 
+// Global configuration values
+const VERY_BIG_RECT_SCALE = 0.9; // Scale out for very big rectangle
+const VERY_SMALL_RECT_SCALE = 3; // Zoom in for very small rectangle
+const NORMAL_RECT_SCALE = 1.4; // Slight zoom in for normal rectangle
+const VERY_BIG_RECT_THRESHOLD = 0.8; // Threshold for very big rectangle
+const VERY_SMALL_RECT_THRESHOLD = 0.01; // Threshold for very small rectangle
+
 interface RectCoords {
   startX: number;
   startY: number;
@@ -27,6 +34,7 @@ interface ImageWithTextProps {
   holdDuration: number;
   transitionDuration: number;
   initialDuration: number;
+  fadeTransitionDuration: number;
 }
 
 const ImageWithText: React.FC<ImageWithTextProps> = ({
@@ -40,7 +48,8 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({
   index,
   holdDuration,
   transitionDuration,
-  initialDuration
+  initialDuration,
+  fadeTransitionDuration
 }) => {
   const { width, height } = useVideoConfig();
   const frame = useCurrentFrame();
@@ -61,38 +70,29 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({
 
   // Determine the scaling factor based on the rectangle's area
   let rectScale = 1;
-  if (rectArea > 0.8 * imageArea) {
-    // Very big rectangle
-    rectScale = 0.9; // Scale out
-  } else if (rectArea < 0.01 * imageArea) {
-    // Very small rectangle
-    rectScale = 3; // Zoom in
+  if (rectArea > VERY_BIG_RECT_THRESHOLD * imageArea) {
+    rectScale = VERY_BIG_RECT_SCALE; // Scale out for very big rectangle
+  } else if (rectArea < VERY_SMALL_RECT_THRESHOLD * imageArea) {
+    rectScale = VERY_SMALL_RECT_SCALE; // Zoom in for very small rectangle
   } else {
-    // Normal rectangle
-    rectScale = 1.4; // Slight zoom in
+    rectScale = NORMAL_RECT_SCALE; // Slight zoom in for normal rectangle
   }
 
   // Calculate the center of the rectangle
   const rectCenterX = rectCoords.startX + rectCoords.width / 2;
   const rectCenterY = rectCoords.startY + rectCoords.height / 2;
 
-  // Calculate the center of the next rectangle
+  // Calculate the center of the next and previous rectangles
   const nextRectCenterX = nextRectCoords.startX + nextRectCoords.width / 2;
   const nextRectCenterY = nextRectCoords.startY + nextRectCoords.height / 2;
-
-  // Calculate the center of the previous rectangle
   const prevRectCenterX = prevRectCoords.startX + prevRectCoords.width / 2;
   const prevRectCenterY = prevRectCoords.startY + prevRectCoords.height / 2;
 
   // Calculate the offset to center the rectangle within the video frame
   const offsetX = width / 2 - rectCenterX * scale * rectScale;
   const offsetY = height / 2 - rectCenterY * scale * rectScale;
-
-  // Calculate the offset to center the next rectangle within the video frame
   const nextOffsetX = width / 2 - nextRectCenterX * scale * rectScale;
   const nextOffsetY = height / 2 - nextRectCenterY * scale * rectScale;
-
-  // Calculate the offset to center the previous rectangle within the video frame
   const prevOffsetX = width / 2 - prevRectCenterX * scale * rectScale;
   const prevOffsetY = height / 2 - prevRectCenterY * scale * rectScale;
 
@@ -119,6 +119,13 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({
     }
   );
 
+  // Calculate fade transition
+  const opacity = interpolate(frame, [0, fadeTransitionDuration], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+    easing: Easing.ease
+  });
+
   // Debugging logs to check calculated values
   useEffect(() => {
     console.log(`Video dimensions: ${width}x${height}`);
@@ -144,15 +151,15 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({
     text
   ]);
 
-  console.log(rectScale, 'rectScale');
-
   return (
-    <AbsoluteFill style={{
-      backgroundColor: 'black',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center'
-    }}>
+    <AbsoluteFill
+      style={{
+        backgroundColor: 'black',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}
+    >
       <Img
         src={image}
         alt='Emphasized Image'
@@ -164,7 +171,8 @@ const ImageWithText: React.FC<ImageWithTextProps> = ({
           top: `${interpolatedY}px`,
           left: `${interpolatedX}px`,
           transform: `scale(${rectScale})`,
-          transformOrigin: 'top left'
+          transformOrigin: 'top left',
+          opacity: opacity // Apply fade transition
         }}
         onLoad={() => setLoaded(true)}
         onError={() => setLoaded(false)}
